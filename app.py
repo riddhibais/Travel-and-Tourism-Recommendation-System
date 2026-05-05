@@ -102,7 +102,7 @@ if st.session_state.page == 0:
         <div class="hero-container">
             <p class="main-title">Travel & Tourism Recommendation System</p>
             <p class="jai-johar">🌾 Jai Johar 🌾</p>
-            <p class="hero-sub">Explore the Heart of India: Chhattisgarh</p>
+            <p class="hero-sub">Welcome to the Dhan ka Katora—where the hospitality is as abundant as our harvest.</p>
         </div>
     """, unsafe_allow_html=True)
     
