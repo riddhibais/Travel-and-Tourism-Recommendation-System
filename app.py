@@ -18,6 +18,12 @@ st.markdown("""
         margin-bottom: 40px;
         border-bottom: 8px solid #FCD34D;
     }
+    
+    /* Force White text on Green Background */
+    .hero-container p, .hero-container h1, .hero-container span {
+        color: #FFFFFF !important;
+    }
+
     .main-title { 
         font-size: 3.5rem; 
         font-weight: 850; 
@@ -32,7 +38,7 @@ st.markdown("""
         letter-spacing: 2px;
     }
     .hero-sub {
-        color: #D1FAE5 !important;
+        color: #D1FAE5 !important; /* Light Mint Green for contrast */
         font-size: 1.2rem;
         font-style: italic;
     }
@@ -57,8 +63,8 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #059669; transform: scale(1.02); transition: 0.2s; }
 
-    /* Other Pages Text */
-    p, span, label, .stMarkdown { color: #1F2937 !important; font-weight: 500; }
+    /* Other Pages Text (White BG areas) */
+    .stMarkdown p, .stMarkdown span, label { color: #1F2937 !important; font-weight: 500; }
     .card { background: #F9FAFB; padding: 25px; border-radius: 15px; border: 2px solid #E5E7EB; margin-bottom: 20px; }
     .guide-box { background: #F0FDF4; padding: 20px; border-radius: 12px; border-left: 6px solid #059669; }
     </style>
@@ -67,11 +73,9 @@ st.markdown("""
 # --- 2. DATA PROCESSING ---
 @st.cache_resource
 def get_clean_data():
-    # Make sure your CSV file is in the same folder
     try:
         df = pd.read_csv("CG_Tourism_Full_Updated.csv").fillna('Not specified')
     except:
-        # Fallback if file not found
         return pd.DataFrame(columns=['Place Name', 'District', 'Category'])
 
     def apply_categories(row):
@@ -96,17 +100,16 @@ if 'selection' not in st.session_state: st.session_state.selection = None
 
 def go_to(idx): st.session_state.page = idx
 
-# --- PAGE 0: NEW ATTRACTIVE FRONT PAGE ---
+# --- PAGE 0: FRONT PAGE ---
 if st.session_state.page == 0:
     st.markdown("""
         <div class="hero-container">
             <p class="main-title">Travel & Tourism Recommendation System</p>
             <p class="jai-johar">🌾 Jai Johar 🌾</p>
-            <p class="hero-sub">Welcome to Chhattisgarh — the land of golden grains and warm hearts..</p>
+            <p class="hero-sub">Welcome to Chhattisgarh — the land of golden grains and warm hearts.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # 3-Column Layout to fill both sides
     col_left, col_mid, col_right = st.columns([1, 2, 1])
     
     with col_left:
@@ -124,7 +127,16 @@ if st.session_state.page == 0:
 
     with col_mid:
         st.markdown("<h4 style='text-align:center;'>📍 CG Destination Map</h4>", unsafe_allow_html=True)
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Chhattisgarh_map.png/400px-Chhattisgarh_map.png", use_container_width=True)
+        # Updated map URL for better reliability
+        map_url = "https://raw.githubusercontent.com/stevenpemberton/maps/master/chhattisgarh.png" 
+        # If the above doesn't work, Wikimedia is a safe fallback
+        fallback_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Chhattisgarh_map.png/400px-Chhattisgarh_map.png"
+        
+        try:
+            st.image(fallback_url, use_container_width=True)
+        except:
+            st.warning("Map image currently unavailable. Please check your internet connection.")
+            
         st.write("<br>", unsafe_allow_html=True)
         if st.button("Start Your Journey ➔"): go_to(1)
 
@@ -150,7 +162,6 @@ elif st.session_state.page == 1:
         dist = st.selectbox("Location:", ["All Chhattisgarh"] + sorted(df['District'].unique().tolist()))
     with col2:
         budget_lvl = st.select_slider("Budget Level:", options=["Low", "Medium", "High"])
-        st.write("<br>", unsafe_allow_html=True)
     
     st.session_state.filters = {"cat": cat, "dist": dist, "budget": budget_lvl}
     
@@ -203,7 +214,6 @@ elif st.session_state.page == 3:
         st.markdown("#### 🚀 How to Reach")
         st.write(f"**Route:** {p['How to Reach from Raipur']}")
         st.write(f"**Nearest Train:** {p['Nearest Railway Station']} ({p['Distance from Railway Station (km)']} km)")
-        st.write(f"**Nearest Airport:** {p['Nearest Airport']}")
         st.markdown("#### 🍱 Food & Markets")
         st.write(f"**Speciality:** {p['Local Specialty Food']}")
 
