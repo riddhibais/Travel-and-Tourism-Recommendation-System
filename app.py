@@ -19,31 +19,27 @@ st.markdown("""
         border-bottom: 8px solid #FCD34D;
     }
     
-    /* Force White text on Green Background */
-    .hero-container p, .hero-container h1, .hero-container span {
-        color: #FFFFFF !important;
-    }
-
-    .main-title { 
+    /* Ensuring ALL text inside dark green hero is white/gold */
+    .hero-container .main-title { 
         font-size: 3.5rem; 
         font-weight: 850; 
         color: #FFFFFF !important; 
         margin-bottom: 10px;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
-    .jai-johar { 
+    .hero-container .jai-johar { 
         font-size: 2.2rem; 
         font-weight: 700; 
         color: #FCD34D !important; 
         letter-spacing: 2px;
     }
-    .hero-sub {
-        color: #D1FAE5 !important; /* Light Mint Green for contrast */
+    .hero-container .hero-sub {
+        color: #FFFFFF !important;
         font-size: 1.2rem;
         font-style: italic;
     }
 
-    /* Side Info Cards for Front Page */
+    /* Side Info Cards for Front Page - Golden Headings */
     .side-card {
         background: #F3F4F6;
         padding: 20px;
@@ -52,7 +48,11 @@ st.markdown("""
         margin-bottom: 20px;
         text-align: center;
     }
-    .side-card h4 { color: #064E3B !important; margin-bottom: 5px; }
+    .side-card h4 { 
+        color: #B45309 !important; /* Golden-Brown/Deep Gold */
+        font-weight: 800;
+        margin-bottom: 5px; 
+    }
     .side-card p { color: #4B5563 !important; font-size: 0.9rem; }
 
     /* Buttons */
@@ -63,9 +63,13 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #059669; transform: scale(1.02); transition: 0.2s; }
 
-    /* Other Pages Text (White BG areas) */
-    .stMarkdown p, .stMarkdown span, label { color: #1F2937 !important; font-weight: 500; }
+    /* Normal Text (White BG areas) - Remains Dark */
+    p, span, label, .stMarkdown { color: #1F2937 !important; font-weight: 500; }
+    
+    /* Result Cards */
     .card { background: #F9FAFB; padding: 25px; border-radius: 15px; border: 2px solid #E5E7EB; margin-bottom: 20px; }
+    
+    /* Light Green Box - Keeping text dark as requested */
     .guide-box { background: #F0FDF4; padding: 20px; border-radius: 12px; border-left: 6px solid #059669; }
     </style>
     """, unsafe_allow_html=True)
@@ -110,10 +114,10 @@ if st.session_state.page == 0:
         </div>
     """, unsafe_allow_html=True)
     
-    col_left, col_mid, col_right = st.columns([1, 2, 1])
+    # 2-Column Layout (Map removed, content centered)
+    col_left, col_right = st.columns(2)
     
     with col_left:
-        st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("""
             <div class="side-card">
                 <h4>🌳 Wildlife</h4>
@@ -125,23 +129,7 @@ if st.session_state.page == 0:
             </div>
         """, unsafe_allow_html=True)
 
-    with col_mid:
-        st.markdown("<h4 style='text-align:center;'>📍 CG Destination Map</h4>", unsafe_allow_html=True)
-        # Updated map URL for better reliability
-        map_url = "https://raw.githubusercontent.com/stevenpemberton/maps/master/chhattisgarh.png" 
-        # If the above doesn't work, Wikimedia is a safe fallback
-        fallback_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Chhattisgarh_map.png/400px-Chhattisgarh_map.png"
-        
-        try:
-            st.image(fallback_url, use_container_width=True)
-        except:
-            st.warning("Map image currently unavailable. Please check your internet connection.")
-            
-        st.write("<br>", unsafe_allow_html=True)
-        if st.button("Start Your Journey ➔"): go_to(1)
-
     with col_right:
-        st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("""
             <div class="side-card">
                 <h4>🛕 Heritage</h4>
@@ -152,6 +140,12 @@ if st.session_state.page == 0:
                 <p>Taste the unique flavors of Bastar and Raipur.</p>
             </div>
         """, unsafe_allow_html=True)
+    
+    # Center Button
+    st.write("<br>", unsafe_allow_html=True)
+    _, btn_col, _ = st.columns([1, 2, 1])
+    with btn_col:
+        if st.button("Start Your Journey ➔"): go_to(1)
 
 # --- PAGE 1: PREFERENCES ---
 elif st.session_state.page == 1:
@@ -196,7 +190,7 @@ elif st.session_state.page == 2:
                 cA, cB = st.columns(2)
                 with cA:
                     link = f"https://www.google.com/search?q={row['Place Name'].replace(' ', '+')}+Chhattisgarh&tbm=isch"
-                    st.markdown(f"**[📷 Click to View Photos]({link})**")
+                    st.markdown(f"**[📷 View Photos]({link})**")
                 with cB:
                     if st.button(f"View Travel Guide", key=idx):
                         st.session_state.selection = row
@@ -214,17 +208,12 @@ elif st.session_state.page == 3:
         st.markdown("#### 🚀 How to Reach")
         st.write(f"**Route:** {p['How to Reach from Raipur']}")
         st.write(f"**Nearest Train:** {p['Nearest Railway Station']} ({p['Distance from Railway Station (km)']} km)")
-        st.markdown("#### 🍱 Food & Markets")
-        st.write(f"**Speciality:** {p['Local Specialty Food']}")
+        st.write(f"**Nearest Airport:** {p['Nearest Airport']}")
 
     with col_r:
-        st.markdown("#### 🚣 Activities")
-        st.write(p['Things to Do'])
-        
-        if p['Final_Category'] in ['Nature & Waterfalls', 'Wildlife & Parks']:
-            st.markdown("#### 🛡️ Seasonal Safety (Nature/Forest)")
-            st.write(f"**Best Time:** {p['Best Season to Visit']}")
-            st.info(f"**Monsoon Status:** {p['Safe to Visit in Monsoon']}")
+        st.markdown("#### 🍱 Food & Activities")
+        st.write(f"**Food Speciality:** {p['Local Specialty Food']}")
+        st.write(f"**Things to Do:** {p['Things to Do']}")
         
         st.markdown("#### 💰 Costs")
         st.write(f"**Total Budget:** ₹{p['Estimated Total Trip Budget (INR) 1 Night']}")
