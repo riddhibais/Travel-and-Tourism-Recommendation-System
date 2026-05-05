@@ -48,7 +48,7 @@ st.markdown("""
     }
     .side-card p { color: #4B5563 !important; font-size: 0.9rem; }
 
-    /* BUTTON STYLING */
+    /* BUTTON TEXT FIX */
     div.stButton > button p { color: white !important; }
     .stButton>button { 
         width: 100%; border-radius: 12px; height: 3.8rem; 
@@ -65,29 +65,38 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA PROCESSING ---
+# --- 2. DATA PROCESSING (PLACE FIX LOGIC) ---
 @st.cache_resource
 def get_clean_data():
     try:
         df = pd.read_csv("CG_Tourism_Full_Updated.csv").fillna('Not specified')
     except:
-        return pd.DataFrame(columns=['Place Name', 'District', 'Category', 'Estimated Total Trip Budget (INR) 1 Night'])
+        return pd.DataFrame(columns=['Place Name', 'District', 'Category'])
 
     def apply_categories(row):
         name = str(row['Place Name']).lower()
         orig_cat = str(row['Category']).lower()
         
+        # 1. Nature & Waterfalls (Broad Match for Chitrakote/Tirathgarh etc.)
         if any(x in name for x in ['fall', 'chitrakoot', 'chitrakote', 'ghat', 'dhar']) or \
            any(x in orig_cat for x in ['waterfall', 'nature', 'water']):
             return 'Nature & Waterfalls'
+        
+        # 2. Lakes & Waterfronts
         if any(x in name for x in ['sarovar', 'talab', 'lake', 'marine drive', 'riverfront', 'dam', 'reservoir']):
             return 'Lakes & Waterfronts'
+        
+        # 3. Religious & Spiritual
         if any(x in name for x in ['temple', 'mandir', 'dham', 'ashram', 'church', 'mosque']) or \
            any(x in orig_cat for x in ['temple', 'religious', 'spiritual', 'pilgrimage']):
             return 'Religious & Spiritual'
+        
+        # 4. Wildlife & Parks
         if any(x in name for x in ['sanctuary', 'national park', 'zoo', 'udyan', 'wildlife', 'safari', 'cave', 'gupha']) or \
            any(x in orig_cat for x in ['wildlife', 'park', 'zoo', 'cave']):
             return 'Wildlife & Parks'
+        
+        # 5. Heritage & Culture
         if any(x in name for x in ['fort', 'qila', 'palace', 'museum', 'archaeological', 'sirpur']) or \
            any(x in orig_cat for x in ['heritage', 'fort', 'archaeological', 'museum']):
             return 'Heritage & Culture'
@@ -99,13 +108,11 @@ def get_clean_data():
 
 df = get_clean_data()
 
-# --- 3. NAVIGATION LOGIC ---
+# --- 3. NAVIGATION ---
 if 'page' not in st.session_state: st.session_state.page = 0
 if 'selection' not in st.session_state: st.session_state.selection = None
-if 'filters' not in st.session_state: st.session_state.filters = {}
 
-def go_to(idx): 
-    st.session_state.page = idx
+def go_to(idx): st.session_state.page = idx
 
 # --- PAGE 0: FRONT PAGE ---
 if st.session_state.page == 0:
@@ -138,16 +145,14 @@ elif st.session_state.page == 1:
         cat = st.selectbox("I want to visit:", sorted(df['Final_Category'].unique()))
         dist = st.selectbox("Location:", ["All Chhattisgarh"] + sorted(df['District'].unique().tolist()))
     with col2:
-        budget_lvl = st.select_slider("Budget Level:", options=["Low", "Medium", "High"], help="Low: 0-1500 | Mid: 1500-3000 | High: 3000+")
+        budget_lvl = st.select_slider("Budget Level:", options=["Low", "Medium", "High"])
     
     st.session_state.filters = {"cat": cat, "dist": dist, "budget": budget_lvl}
     
     st.write("---")
     c1, c2 = st.columns(2)
-    with c1: 
-        if st.button("⬅ Back Home"): go_to(0)
-    with c2: 
-        if st.button("Search Recommendations ➔"): go_to(2)
+    with c1: st.button("⬅ Back Home", on_click=lambda: go_to(0))
+    with c2: st.button("Search Recommendations ➔", on_click=lambda: go_to(2))
 
 # --- PAGE 2: RESULTS ---
 elif st.session_state.page == 2:
@@ -158,22 +163,15 @@ elif st.session_state.page == 2:
     if f['dist'] != "All Chhattisgarh":
         filtered = filtered[filtered['District'] == f['dist']]
     
-    # --- BUDGET RANGE LOGIC ---
+    # Budget Logic
     if f['budget'] == "Low": 
         filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1500]
-        range_val = "Range: ₹0 - ₹1500"
     elif f['budget'] == "Medium": 
-        filtered = filtered[(filtered['Estimated Total Trip Budget (INR) 1 Night'] > 1500) & (filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 3000)]
-        range_val = "Range: ₹1500 - ₹3000"
-    else:
-        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] > 3000]
-        range_val = "Range: ₹3000+"
-
-    st.success(f"Showing results for **{f['budget']} Budget** ({range_val})")
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 4000]
 
     if filtered.empty:
-        st.warning("No matches found for this specific range. Try another budget level.")
-        if st.button("⬅ Back to Filters"): go_to(1)
+        st.warning("No matches found for this filter. Try 'High' budget or 'All Chhattisgarh' to see all places.")
+        st.button("⬅ Back to Filters", on_click=lambda: go_to(1))
     else:
         for idx, row in filtered.iterrows():
             with st.container():
@@ -187,12 +185,10 @@ elif st.session_state.page == 2:
                     link = f"https://www.google.com/search?q={row['Place Name'].replace(' ', '+')}+Chhattisgarh&tbm=isch"
                     st.markdown(f"**[📷 View Photos]({link})**")
                 with cB:
-                    if st.button(f"View Travel Guide", key=f"btn_{idx}"):
+                    if st.button(f"View Travel Guide", key=idx):
                         st.session_state.selection = row
                         go_to(3)
                         st.rerun()
-        
-        st.button("⬅ Change Filters", on_click=lambda: go_to(1))
 
 # --- PAGE 3: DETAILED GUIDE ---
 elif st.session_state.page == 3:
@@ -205,18 +201,13 @@ elif st.session_state.page == 3:
         st.markdown("#### 🚀 How to Reach")
         st.write(f"**Route:** {p['How to Reach from Raipur']}")
         st.write(f"**Nearest Train:** {p['Nearest Railway Station']}")
-        
-        st.markdown("#### 🏠 Where to Stay")
-        # Added Stay functionality here
-        stay_info = p.get('Stay Options', "Recommended: Chhattisgarh Tourism Board (CTB) Resorts or local hotels in the District Headquarters.")
-        st.info(stay_info)
 
     with col_r:
         st.markdown("#### 🍱 Food & Activities")
         st.write(f"**Food Speciality:** {p['Local Specialty Food']}")
         st.write(f"**Things to Do:** {p['Things to Do']}")
         st.markdown("#### 💰 Costs")
-        st.write(f"**Total Budget (1 Night):** ₹{p['Estimated Total Trip Budget (INR) 1 Night']}")
+        st.write(f"**Total Budget:** ₹{p['Estimated Total Trip Budget (INR) 1 Night']}")
 
     st.write("---")
     if st.button("🏠 Plan Another Trip"):
