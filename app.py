@@ -19,7 +19,7 @@ st.markdown("""
         border-bottom: 8px solid #FCD34D;
     }
     
-    /* Ensuring ALL text inside dark green hero is white/gold */
+    /* Force white text in Hero */
     .hero-container .main-title { 
         font-size: 3.5rem; 
         font-weight: 850; 
@@ -39,7 +39,7 @@ st.markdown("""
         font-style: italic;
     }
 
-    /* Side Info Cards for Front Page - Golden Headings */
+    /* Side Info Cards (Golden Headings) */
     .side-card {
         background: #F3F4F6;
         padding: 20px;
@@ -49,27 +49,40 @@ st.markdown("""
         text-align: center;
     }
     .side-card h4 { 
-        color: #B45309 !important; /* Golden-Brown/Deep Gold */
+        color: #B45309 !important; 
         font-weight: 800;
         margin-bottom: 5px; 
     }
     .side-card p { color: #4B5563 !important; font-size: 0.9rem; }
 
-    /* Buttons */
+    /* --- BUTTON TEXT FIX --- */
+    /* Targetting every button to ensure text is WHITE */
+    div.stButton > button p {
+        color: white !important;
+    }
     .stButton>button { 
         width: 100%; border-radius: 12px; height: 3.8rem; 
-        background-color: #064E3B; color: white !important; 
+        background-color: #064E3B; 
+        color: white !important; /* General color */
         font-weight: bold; font-size: 1.2rem; border: 2px solid #FCD34D;
     }
-    .stButton>button:hover { background-color: #059669; transform: scale(1.02); transition: 0.2s; }
+    .stButton>button:hover { 
+        background-color: #059669; 
+        border-color: #FFFFFF;
+    }
 
-    /* Normal Text (White BG areas) - Remains Dark */
+    /* Normal Prose Text (White BG areas) */
     p, span, label, .stMarkdown { color: #1F2937 !important; font-weight: 500; }
     
-    /* Result Cards */
+    /* --- RESULT CARD TEXT FIX --- */
     .card { background: #F9FAFB; padding: 25px; border-radius: 15px; border: 2px solid #E5E7EB; margin-bottom: 20px; }
-    
-    /* Light Green Box - Keeping text dark as requested */
+    .card-title {
+        font-size: 1.4rem; 
+        font-weight: 800; 
+        color: #064E3B !important; /* Keeping titles dark green on light card */
+    }
+
+    /* Light Green Box (Perfect as is) */
     .guide-box { background: #F0FDF4; padding: 20px; border-radius: 12px; border-left: 6px solid #059669; }
     </style>
     """, unsafe_allow_html=True)
@@ -114,9 +127,7 @@ if st.session_state.page == 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 2-Column Layout (Map removed, content centered)
     col_left, col_right = st.columns(2)
-    
     with col_left:
         st.markdown("""
             <div class="side-card">
@@ -141,7 +152,6 @@ if st.session_state.page == 0:
             </div>
         """, unsafe_allow_html=True)
     
-    # Center Button
     st.write("<br>", unsafe_allow_html=True)
     _, btn_col, _ = st.columns([1, 2, 1])
     with btn_col:
@@ -183,7 +193,7 @@ elif st.session_state.page == 2:
         for idx, row in filtered.iterrows():
             with st.container():
                 st.markdown(f"""<div class="card">
-                    <span style="font-size: 1.4rem; font-weight: 800; color: #064E3B !important;">{row['Place Name']}</span><br>
+                    <span class="card-title">{row['Place Name']}</span><br>
                     <span style="color: #374151;">District: {row['District']} | Budget: ₹{row['Estimated Total Trip Budget (INR) 1 Night']}</span>
                 </div>""", unsafe_allow_html=True)
                 
@@ -208,7 +218,6 @@ elif st.session_state.page == 3:
         st.markdown("#### 🚀 How to Reach")
         st.write(f"**Route:** {p['How to Reach from Raipur']}")
         st.write(f"**Nearest Train:** {p['Nearest Railway Station']} ({p['Distance from Railway Station (km)']} km)")
-        st.write(f"**Nearest Airport:** {p['Nearest Airport']}")
 
     with col_r:
         st.markdown("#### 🍱 Food & Activities")
