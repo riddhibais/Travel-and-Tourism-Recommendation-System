@@ -3,126 +3,152 @@ import pandas as pd
 import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 
-# 1. Setup & Load Models
+# --- 1. SET THEME & COLORS ---
+st.set_page_config(page_title="Chhattisgarh Tourism AI", layout="wide")
+
+# Custom CSS for a colorful look (Green & Gold Theme)
+st.markdown("""
+    <style>
+    .main { background-color: #f0f2f6; }
+    .stButton>button { background-color: #2e7d32; color: white; border-radius: 10px; }
+    .stMetric { background-color: #ffffff; padding: 10px; border-radius: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    h1 { color: #e65100; }
+    h2 { color: #2e7d32; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. LOAD DATA & MODELS ---
 @st.cache_resource
-def load_models():
-    # Load your dataset
+def load_assets():
     df = pd.read_csv("CG_Tourism_Full_Updated.csv").fillna('Not Available')
-    # Load the brain (PKL files) you saved in your folder
     with open('vectorizer.pkl', 'rb') as f:
         vectorizer = pickle.load(f)
     with open('tfidf_matrix.pkl', 'rb') as f:
         matrix = pickle.load(f)
     return df, vectorizer, matrix
 
-df, tfidf, tfidf_matrix = load_models()
+df, tfidf, tfidf_matrix = load_assets()
 
-# 2. Navigation Sidebar
-st.sidebar.title("Travel Guide Menu")
-page = st.sidebar.radio("Navigate", ["Welcome", "User Input", "Recommendations", "Cost Estimation", "Final Travel Plan"])
+# --- 3. SIDEBAR NAVIGATION ---
+st.sidebar.title("🏝️ CG Explorer")
+page = st.sidebar.radio("Go to:", ["Welcome", "User Input", "Recommendations", "Cost Estimation", "Final Travel Plan"])
 
-# --- PAGE 1: WELCOME (The Entry Point) ---
+# --- PAGE 1: WELCOME ---
 if page == "Welcome":
     st.markdown("<h1 style='text-align: center;'>🙏 Jai Johar!</h1>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center;'>Explore Chhattisgarh Tourism</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Welcome to the Heart of Incredible India</h3>", unsafe_allow_html=True)
     
-    # Visual: Chhattisgarh Map / Landscape
-    # You can replace this URL with a local path to your map image if you have one
-    st.image("https://incredibleindia.org/content/dam/incredible-india-v2/images/states/chhattisgarh/chhattisgarh-banner.jpg", 
-             caption="The Beautiful Landscape of Chhattisgarh", use_container_width=True)
+    # Chhattisgarh Map Image Placeholder
+    st.image("https://www.chhattisgarhtourism.org/images/cg-map.png", width=400) # Use a direct URL to a map
     
     st.write("---")
-    st.markdown("""
-    ### Welcome to the Heart of India
-    Chhattisgarh is a land of **Waterfalls, Ancient Temples, and Tribal Culture**. 
-    From the roaring Chitrakote Falls to the historical temples of Sirpur, there is so much to discover.
-    
-    **Features of this System:**
-    * **ML Recommendations:** Suggests places based on your mood and vibe.
-    * **Budgeting:** Estimates food and stay costs.
-    * **Travel Guide:** Gives you a complete plan including things to do and local food.
-    """)
-    st.info("👈 Use the sidebar on the left to start your journey!")
+    st.write("Chhattisgarh is known for its waterfalls, temples, and forests. This AI system uses **Machine Learning** to find the best spots for you based on your budget and vibe.")
 
 # --- PAGE 2: USER INPUT ---
 elif page == "User Input":
-    st.header("🎯 What are you looking for?")
-    with st.form("pref_form"):
+    st.header("🎯 Define Your Trip")
+    with st.form("user_form"):
         col1, col2 = st.columns(2)
         with col1:
-            cat = st.selectbox("Select Category", options=df['Category'].unique())
-            dist = st.selectbox("Select District", options=df['District'].unique())
+            cat = st.selectbox("I want to visit:", df['Category'].unique())
+            dist = st.selectbox("Preferred District:", ["Any"] + list(df['District'].unique()))
         with col2:
-            vibe = st.text_input("Describe your vibe", placeholder="e.g., quiet forest, holy temple, family picnic")
-            budget = st.slider("Max Daily Budget (INR)", 500, 5000, 2000)
-        
-        submit = st.form_submit_button("Save My Preferences")
-        if submit:
-            st.session_state.user_prefs = {"category": cat, "district": dist, "vibe": vibe}
-            st.success("Preferences Saved! Navigate to the 'Recommendations' page.")
+            budget_range = st.select_slider("Select Budget Range (INR)", 
+                                            options=["Low (0-1000)", "Mid (1000-3000)", "High (3000+)"])
+            vibe = st.text_input("Vibe", placeholder="e.g. peaceful, waterfall, ancient history")
+            
+        if st.form_submit_button("Find My Places"):
+            st.session_state.user_prefs = {
+                "category": cat, 
+                "district": "" if dist == "Any" else dist, 
+                "vibe": vibe,
+                "budget": budget_range
+            }
+            st.success("Preferences saved! Go to Recommendations.")
 
-# --- PAGE 3: RECOMMENDATIONS (ML LOGIC) ---
+# --- PAGE 3: RECOMMENDATIONS ---
 elif page == "Recommendations":
-    st.header("✨ AI Recommended Destinations")
+    st.header("✨ Places Filtered for You")
     if 'user_prefs' in st.session_state:
         u = st.session_state.user_prefs
-        user_query = f"{u['category']} {u['district']} {u['vibe']}"
         
-        # ML Engine
-        user_vec = tfidf.transform([user_query])
-        scores = cosine_similarity(user_vec, tfidf_matrix).flatten()
-        top_indices = scores.argsort()[-3:][::-1]
-        results = df.iloc[top_indices]
+        # 1. Machine Learning Search
+        query = f"{u['category']} {u['district']} {u['vibe']}"
+        u_vec = tfidf.transform([query])
+        scores = cosine_similarity(u_vec, tfidf_matrix).flatten()
         
-        for i, row in results.iterrows():
-            with st.expander(f"📍 {row['Place Name']} - {row['District']}"):
-                st.write(f"**Best Season:** {row['Best Season to Visit']}")
-                st.write(f"**Transport:** {row['How to Reach from Raipur']}")
-                if st.button(f"Select {row['Place Name']}", key=f"btn_{i}"):
-                    st.session_state.selected_place = row
-                    st.balloons()
-                    st.success("Destination selected! Check Cost Estimation.")
+        # 2. Add scores to DF and filter by Budget Range
+        df_copy = df.copy()
+        df_copy['score'] = scores
+        
+        # Budget Filtering Logic
+        if u['budget'] == "Low (0-1000)":
+            df_copy = df_copy[df_copy['Estimated Total Trip Budget (INR) 1 Night'] <= 1000]
+        elif u['budget'] == "Mid (1000-3000)":
+            df_copy = df_copy[(df_copy['Estimated Total Trip Budget (INR) 1 Night'] > 1000) & (df_copy['Estimated Total Trip Budget (INR) 1 Night'] <= 3000)]
+        else:
+            df_copy = df_copy[df_copy['Estimated Total Trip Budget (INR) 1 Night'] > 3000]
+
+        top_results = df_copy.sort_values(by='score', ascending=False).head(4)
+
+        if top_results.empty:
+            st.warning("No places found in this budget. Try a higher budget range!")
+        else:
+            for i, row in top_results.iterrows():
+                with st.container():
+                    c1, c2 = st.columns([1, 2])
+                    with c1:
+                        # Since we don't have images in CSV, we show a colored box with Category
+                        st.info(f"📁 {row['Category']}")
+                    with c2:
+                        st.subheader(row['Place Name'])
+                        st.write(f"📍 **District:** {row['District']}")
+                        st.write(f"💰 **Estimated Cost:** ₹{row['Estimated Total Trip Budget (INR) 1 Night']}")
+                        if st.button(f"Choose {row['Place Name']}", key=i):
+                            st.session_state.selected_place = row
+                            st.success(f"Selected {row['Place Name']}!")
+                    st.divider()
     else:
-        st.warning("Please enter your preferences in the 'User Input' section first.")
+        st.warning("Please go to User Input first.")
 
 # --- PAGE 4: COST ESTIMATION ---
 elif page == "Cost Estimation":
-    st.header("💰 Budget Planner")
     if 'selected_place' in st.session_state:
         p = st.session_state.selected_place
-        st.subheader(f"Estimated Costs for {p['Place Name']}")
+        st.header(f"💰 Budget Breakdown for {p['Place Name']}")
         
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Food/Day", f"₹{p['Avg Food Cost per day (INR)']}")
-        c2.metric("Stay/Night", f"₹{p['Avg Stay Cost per night (INR)']}")
-        c3.metric("Entry Fee", f"₹{p['Entry Fee (INR)']}")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Stay (per night)", f"₹{p['Avg Stay Cost per night (INR)']}")
+        col2.metric("Food (per day)", f"₹{p['Avg Food Cost per day (INR)']}")
+        col3.metric("Entry Fee", f"₹{p['Entry Fee (INR)']}")
         
-        st.write("---")
-        st.info(f"**Total Estimated Budget (1 Night):** ₹{p['Estimated Total Trip Budget (INR) 1 Night']}")
+        st.markdown(f"### Total Trip Estimate: **₹{p['Estimated Total Trip Budget (INR) 1 Night']}**")
     else:
-        st.error("Select a destination from the 'Recommendations' page first.")
+        st.error("Select a place from Recommendations first.")
 
 # --- PAGE 5: FINAL TRAVEL PLAN ---
 elif page == "Final Travel Plan":
     if 'selected_place' in st.session_state:
         p = st.session_state.selected_place
-        st.header(f"🧳 Your Guide to {p['Place Name']}")
+        st.title(f"🗺️ Destination: {p['Place Name']}")
         
-        st.subheader("📋 Travel Notes")
-        st.write(p['Notes'])
+        tab1, tab2, tab3 = st.tabs(["Overview", "How to Reach", "Tips"])
         
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("### 🚣 Things to Do")
-            st.write(p['Things to Do'])
-            st.markdown("### 🍛 Local Specialty Food")
-            st.write(p['Local Specialty Food'])
-        with col_b:
-            st.markdown("### 🛍️ Local Markets")
-            st.write(p['Nearest Market for Shopping'])
-            st.markdown("### 🏨 Nearby Hotels")
-            st.write(p['Stay Options Near Bus Stand'])
+        with tab1:
+            st.write(f"**Things to do:** {p['Things to Do']}")
+            st.write(f"**Local Food to try:** {p['Local Specialty Food']}")
+            st.write(f"**Suitable for:** {p['Suitable For']}")
+            # Link to images
+            google_url = f"https://www.google.com/search?q=Chhattisgarh+Tourism+{p['Place Name'].replace(' ', '+')}&tbm=isch"
+            st.markdown(f"[📷 View Photos of {p['Place Name']}]({google_url})", unsafe_allow_html=True)
+        
+        with tab2:
+            st.write(f"✈️ **Airport:** {p['Nearest Airport']} ({p['Distance from Airport (km)']} km)")
+            st.write(f"🚂 **Railway:** {p['Nearest Railway Station']} ({p['Distance from Railway Station (km)']} km)")
+            st.write(f"🛣️ **Route:** {p['How to Reach from Raipur']}")
             
-        st.button("Print This Plan (Ctrl+P)")
+        with tab3:
+            st.write(f"📅 **Best Season:** {p['Best Season to Visit']}")
+            st.write(f"📝 **Notes:** {p['Notes']}")
     else:
-        st.error("No destination selected. Please pick one from the 'Recommendations' page.")
+        st.error("Please pick a destination first.")
