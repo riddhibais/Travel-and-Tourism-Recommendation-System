@@ -6,10 +6,7 @@ st.set_page_config(page_title="CG Tourism AI", layout="wide")
 
 st.markdown("""
     <style>
-    /* Global Background */
     .stApp { background-color: #FFFFFF; }
-    
-    /* Hero Section - Dark Green with White/Gold Text */
     .hero-container {
         padding: 60px 20px;
         text-align: center;
@@ -18,8 +15,6 @@ st.markdown("""
         margin-bottom: 40px;
         border-bottom: 8px solid #FCD34D;
     }
-    
-    /* Force white text in Hero */
     .hero-container .main-title { 
         font-size: 3.5rem; 
         font-weight: 850; 
@@ -38,8 +33,6 @@ st.markdown("""
         font-size: 1.2rem;
         font-style: italic;
     }
-
-    /* Side Info Cards (Golden Headings) */
     .side-card {
         background: #F3F4F6;
         padding: 20px;
@@ -55,39 +48,24 @@ st.markdown("""
     }
     .side-card p { color: #4B5563 !important; font-size: 0.9rem; }
 
-    /* --- BUTTON TEXT FIX --- */
-    /* Targetting every button to ensure text is WHITE */
-    div.stButton > button p {
-        color: white !important;
-    }
+    /* BUTTON TEXT FIX */
+    div.stButton > button p { color: white !important; }
     .stButton>button { 
         width: 100%; border-radius: 12px; height: 3.8rem; 
         background-color: #064E3B; 
-        color: white !important; /* General color */
+        color: white !important; 
         font-weight: bold; font-size: 1.2rem; border: 2px solid #FCD34D;
     }
-    .stButton>button:hover { 
-        background-color: #059669; 
-        border-color: #FFFFFF;
-    }
+    .stButton>button:hover { background-color: #059669; border-color: #FFFFFF; }
 
-    /* Normal Prose Text (White BG areas) */
     p, span, label, .stMarkdown { color: #1F2937 !important; font-weight: 500; }
-    
-    /* --- RESULT CARD TEXT FIX --- */
     .card { background: #F9FAFB; padding: 25px; border-radius: 15px; border: 2px solid #E5E7EB; margin-bottom: 20px; }
-    .card-title {
-        font-size: 1.4rem; 
-        font-weight: 800; 
-        color: #064E3B !important; /* Keeping titles dark green on light card */
-    }
-
-    /* Light Green Box (Perfect as is) */
+    .card-title { font-size: 1.4rem; font-weight: 800; color: #064E3B !important; }
     .guide-box { background: #F0FDF4; padding: 20px; border-radius: 12px; border-left: 6px solid #059669; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA PROCESSING ---
+# --- 2. DATA PROCESSING (PLACE FIX LOGIC) ---
 @st.cache_resource
 def get_clean_data():
     try:
@@ -97,13 +75,32 @@ def get_clean_data():
 
     def apply_categories(row):
         name = str(row['Place Name']).lower()
-        orig_cat = row['Category']
-        if any(x in name for x in ['sarovar', 'talab', 'lake', 'marine drive', 'riverfront']): return 'Lakes & Waterfronts'
-        if 'tattapani' in name: return 'Nature & Hot Springs'
-        if orig_cat in ['Temple', 'Religious', 'Spiritual / Pilgrimage']: return 'Religious & Spiritual'
-        if orig_cat in ['Waterfall', 'Nature', 'Water Tourism']: return 'Nature & Waterfalls'
-        if orig_cat in ['Wildlife', 'Park / Zoo', 'Cave']: return 'Wildlife & Parks'
-        if orig_cat in ['Heritage / Fort', 'Heritage / Archaeological', 'Heritage / Urban', 'Museum / Park']: return 'Heritage & Culture'
+        orig_cat = str(row['Category']).lower()
+        
+        # 1. Nature & Waterfalls (Broad Match for Chitrakote/Tirathgarh etc.)
+        if any(x in name for x in ['fall', 'chitrakoot', 'chitrakote', 'ghat', 'dhar']) or \
+           any(x in orig_cat for x in ['waterfall', 'nature', 'water']):
+            return 'Nature & Waterfalls'
+        
+        # 2. Lakes & Waterfronts
+        if any(x in name for x in ['sarovar', 'talab', 'lake', 'marine drive', 'riverfront', 'dam', 'reservoir']):
+            return 'Lakes & Waterfronts'
+        
+        # 3. Religious & Spiritual
+        if any(x in name for x in ['temple', 'mandir', 'dham', 'ashram', 'church', 'mosque']) or \
+           any(x in orig_cat for x in ['temple', 'religious', 'spiritual', 'pilgrimage']):
+            return 'Religious & Spiritual'
+        
+        # 4. Wildlife & Parks
+        if any(x in name for x in ['sanctuary', 'national park', 'zoo', 'udyan', 'wildlife', 'safari', 'cave', 'gupha']) or \
+           any(x in orig_cat for x in ['wildlife', 'park', 'zoo', 'cave']):
+            return 'Wildlife & Parks'
+        
+        # 5. Heritage & Culture
+        if any(x in name for x in ['fort', 'qila', 'palace', 'museum', 'archaeological', 'sirpur']) or \
+           any(x in orig_cat for x in ['heritage', 'fort', 'archaeological', 'museum']):
+            return 'Heritage & Culture'
+            
         return 'Urban Leisure & Adventure'
     
     df['Final_Category'] = df.apply(apply_categories, axis=1)
@@ -129,28 +126,11 @@ if st.session_state.page == 0:
     
     col_left, col_right = st.columns(2)
     with col_left:
-        st.markdown("""
-            <div class="side-card">
-                <h4>🌳 Wildlife</h4>
-                <p>Home to 3 National Parks and 11 Wildlife Sanctuaries.</p>
-            </div>
-            <div class="side-card">
-                <h4>🌊 Waterfalls</h4>
-                <p>Witness the majestic 'Niagara of India' - Chitrakote.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
+        st.markdown("""<div class="side-card"><h4>🌳 Wildlife</h4><p>Home to 3 National Parks and 11 Wildlife Sanctuaries.</p></div>
+                       <div class="side-card"><h4>🌊 Waterfalls</h4><p>Witness the majestic 'Niagara of India' - Chitrakote.</p></div>""", unsafe_allow_html=True)
     with col_right:
-        st.markdown("""
-            <div class="side-card">
-                <h4>🛕 Heritage</h4>
-                <p>Ancient temples and archaeological wonders of Sirpur.</p>
-            </div>
-            <div class="side-card">
-                <h4>🍱 Culture</h4>
-                <p>Taste the unique flavors of Bastar and Raipur.</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class="side-card"><h4>🛕 Heritage</h4><p>Ancient temples and archaeological wonders of Sirpur.</p></div>
+                       <div class="side-card"><h4>🍱 Culture</h4><p>Taste the unique flavors of Bastar and Raipur.</p></div>""", unsafe_allow_html=True)
     
     st.write("<br>", unsafe_allow_html=True)
     _, btn_col, _ = st.columns([1, 2, 1])
@@ -183,11 +163,14 @@ elif st.session_state.page == 2:
     if f['dist'] != "All Chhattisgarh":
         filtered = filtered[filtered['District'] == f['dist']]
     
-    if f['budget'] == "Low": filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1000]
-    elif f['budget'] == "Medium": filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 3000]
+    # Budget Logic
+    if f['budget'] == "Low": 
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1500]
+    elif f['budget'] == "Medium": 
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 4000]
 
     if filtered.empty:
-        st.warning("No matches found. Try selecting 'All Chhattisgarh' for more results.")
+        st.warning("No matches found for this filter. Try 'High' budget or 'All Chhattisgarh' to see all places.")
         st.button("⬅ Back to Filters", on_click=lambda: go_to(1))
     else:
         for idx, row in filtered.iterrows():
@@ -217,13 +200,12 @@ elif st.session_state.page == 3:
     with col_l:
         st.markdown("#### 🚀 How to Reach")
         st.write(f"**Route:** {p['How to Reach from Raipur']}")
-        st.write(f"**Nearest Train:** {p['Nearest Railway Station']} ({p['Distance from Railway Station (km)']} km)")
+        st.write(f"**Nearest Train:** {p['Nearest Railway Station']}")
 
     with col_r:
         st.markdown("#### 🍱 Food & Activities")
         st.write(f"**Food Speciality:** {p['Local Specialty Food']}")
         st.write(f"**Things to Do:** {p['Things to Do']}")
-        
         st.markdown("#### 💰 Costs")
         st.write(f"**Total Budget:** ₹{p['Estimated Total Trip Budget (INR) 1 Night']}")
 
