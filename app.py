@@ -15,10 +15,19 @@ st.markdown("""
         margin-bottom: 40px;
         border-bottom: 8px solid #FCD34D;
     }
+    
+    /* Global Text Fix for Dark Green Backgrounds */
+    .hero-container .main-title, 
+    .hero-container .hero-sub, 
+    .estimate-box h4, 
+    .estimate-box p, 
+    .estimate-box div { 
+        color: #FFFFFF !important; 
+    }
+    
     .hero-container .main-title { 
         font-size: 3.5rem; 
         font-weight: 850; 
-        color: #FFFFFF !important; 
         margin-bottom: 10px;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
@@ -28,11 +37,7 @@ st.markdown("""
         color: #FCD34D !important; 
         letter-spacing: 2px;
     }
-    .hero-container .hero-sub {
-        color: #FFFFFF !important;
-        font-size: 1.2rem;
-        font-style: italic;
-    }
+    
     .side-card {
         background: #F3F4F6;
         padding: 20px;
@@ -44,7 +49,7 @@ st.markdown("""
     .side-card h4 { color: #B45309 !important; font-weight: 800; margin-bottom: 5px; }
     .side-card p { color: #4B5563 !important; font-size: 0.9rem; }
 
-    /* BUTTON TEXT FIX */
+    /* BUTTON STYLING */
     div.stButton > button p { color: white !important; }
     .stButton>button { 
         width: 100%; border-radius: 12px; height: 3.8rem; 
@@ -53,20 +58,31 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #059669; border-color: #FFFFFF; }
 
+    /* Normal Prose Text */
     p, span, label, .stMarkdown { color: #1F2937 !important; font-weight: 500; }
+    
     .card { background: #F9FAFB; padding: 25px; border-radius: 15px; border: 2px solid #E5E7EB; margin-bottom: 20px; }
     .card-title { font-size: 1.4rem; font-weight: 800; color: #064E3B !important; }
     .guide-box { background: #F0FDF4; padding: 20px; border-radius: 12px; border-left: 6px solid #059669; }
     
-    /* Cost Estimator Box */
+    /* LAST PAGE: TEXT-ONLY COST BOX */
     .estimate-box {
         background: #064E3B;
-        color: white !important;
-        padding: 25px;
-        border-radius: 15px;
-        text-align: center;
-        border: 2px solid #FCD34D;
+        padding: 40px;
+        border-radius: 20px;
+        border: 4px solid #FCD34D;
+        color: #FFFFFF !important;
+        line-height: 1.8;
     }
+    .estimate-box h4 { 
+        font-size: 2.2rem; 
+        margin-bottom: 25px; 
+        color: #FCD34D !important;
+        border-bottom: 2px solid #FCD34D;
+        padding-bottom: 10px;
+    }
+    .info-row { margin-bottom: 20px; font-size: 1.2rem; }
+    .info-label { color: #FCD34D; font-weight: bold; font-size: 1.3rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -115,11 +131,12 @@ if st.session_state.page == 0:
     
     col_left, col_right = st.columns(2)
     with col_left:
-        st.markdown("""<div class="side-card"><h4>🌳 Wildlife</h4><p>Home to 3 National Parks and 11 Wildlife Sanctuaries.</p></div>
-                       <div class="side-card"><h4>🌊 Waterfalls</h4><p>Witness the majestic 'Niagara of India' - Chitrakote.</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="side-card"><h4>🌳 Destinations</h4><p>Wildlife, Heritage, and Culture.</p></div>
+                       <div class="side-card"><h4>🌊 Nature</h4><p>Explore Waterfalls and Scenic Lakes.</p></div>""", unsafe_allow_html=True)
     with col_right:
-        st.markdown("""<div class="side-card"><h4>🛕 Heritage</h4><p>Ancient temples and archaeological wonders of Sirpur.</p></div>
-                       <div class="side-card"><h4>🍱 Culture</h4><p>Taste the unique flavors of Bastar and Raipur.</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="side-card"><h4>💰 Budget Guide</h4>
+                        <p><b>Low:</b> Under ₹1,500 | <b>Mid:</b> ₹1,500 - ₹4,000 | <b>High:</b> ₹4,000+</p></div>
+                       <div class="side-card"><h4>🍱 Essentials</h4><p>How to reach and local specialty food.</p></div>""", unsafe_allow_html=True)
     
     st.write("<br>", unsafe_allow_html=True)
     _, btn_col, _ = st.columns([1, 2, 1])
@@ -129,14 +146,14 @@ if st.session_state.page == 0:
 # --- PAGE 1: PREFERENCES ---
 elif st.session_state.page == 1:
     st.markdown("### 🎯 Find Your Perfect Spot")
-    st.info("**Budget Guide:** Low (Under ₹1,500) | Medium (₹1,500 - ₹4,000) | High (Above ₹4,000)")
+    st.info("**Quick Budget Info:** Low (Under ₹1,500) | Medium (₹1,500 - ₹4,000) | High (Above ₹4,000)")
     
     col1, col2 = st.columns(2)
     with col1:
         cat = st.selectbox("I want to visit:", sorted(df['Final_Category'].unique()))
         dist = st.selectbox("Location:", ["All Chhattisgarh"] + sorted(df['District'].unique().tolist()))
     with col2:
-        budget_lvl = st.select_slider("Select Budget Range:", options=["Low", "Medium", "High"])
+        budget_lvl = st.select_slider("Select Budget Category:", options=["Low", "Medium", "High"])
     
     st.session_state.filters = {"cat": cat, "dist": dist, "budget": budget_lvl}
     st.write("---")
@@ -152,18 +169,18 @@ elif st.session_state.page == 2:
     filtered = df[df['Final_Category'] == f['cat']]
     if f['dist'] != "All Chhattisgarh": filtered = filtered[filtered['District'] == f['dist']]
     
-    # Budget Filter Logic (Internal)
+    # Internal Logic
     if f['budget'] == "Low": filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1500]
     elif f['budget'] == "Medium": filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 4000]
 
     if filtered.empty:
-        st.warning("No matches found for this filter. Try a different budget or location.")
+        st.warning("No matches found. Try changing the budget range.")
         st.button("⬅ Back to Filters", on_click=lambda: go_to(1))
     else:
         for idx, row in filtered.iterrows():
             with st.container():
                 st.markdown(f"""<div class="card"><span class="card-title">{row['Place Name']}</span><br>
-                    <span style="color: #374151;">District: {row['District']}</span></div>""", unsafe_allow_html=True)
+                    <span>District: {row['District']}</span></div>""", unsafe_allow_html=True)
                 cA, cB = st.columns(2)
                 with cA:
                     link = f"https://www.google.com/search?q={row['Place Name'].replace(' ', '+')}+Chhattisgarh&tbm=isch"
@@ -187,40 +204,42 @@ elif st.session_state.page == 3:
         st.write(f"**Nearest Train:** {p['Nearest Railway Station']}")
     with col_r:
         st.markdown("#### 🍱 Food & Activities")
-        st.write(f"**Food Speciality:** {p['Local Specialty Food']}")
-        st.write(f"**Things to Do:** {p['Things to Do']}")
+        st.write(f"**Speciality:** {p['Local Specialty Food']}")
+        st.write(f"**Activities:** {p['Things to Do']}")
 
     st.write("---")
     c1, c2 = st.columns(2)
     with c1: st.button("⬅ Back to Results", on_click=lambda: go_to(2))
-    with c2: st.button("Get Cost Estimate ➔", on_click=lambda: go_to(4))
+    with c2: st.button("Cost & Stay Estimation ➔", on_click=lambda: go_to(4))
 
-# --- PAGE 4: SIMPLE COST ESTIMATE ---
+# --- PAGE 4: PLAIN TEXT COST INFO (FINAL PAGE) ---
 elif st.session_state.page == 4:
     p = st.session_state.selection
-    st.markdown(f"### 💰 Estimated Trip Cost: {p['Place Name']}")
+    st.markdown(f"### 💰 Trip Estimation: {p['Place Name']}")
     
-    st.write("Calculate a basic estimate for your stay (1 Night):")
-    colA, colB = st.columns(2)
-    with colA:
-        stay = st.radio("Stay Preference:", ["Dormitory/Budget (₹500)", "Standard Hotel (₹1,500)", "Luxury/Resort (₹4,000)"])
-    with colB:
-        transport = st.radio("Transport Mode:", ["Public Bus (₹300)", "Personal Bike/Car (₹1,000)", "Hired Taxi (₹2,500)"])
-
-    # Basic Logic
-    stay_val = 500 if "Dormitory" in stay else 1500 if "Standard" in stay else 4000
-    trans_val = 300 if "Public" in transport else 1000 if "Personal" in transport else 2500
-    total = stay_val + trans_val + 500 # Adding 500 for basic food
-
     st.markdown(f"""
         <div class="estimate-box">
-            <h4>Estimated Total: ₹{total}*</h4>
-            <p style="color: white !important; font-size: 0.8rem;">*Includes 1 night stay, transport, and basic food for 1 person.</p>
+            <h4>General Cost Breakdown</h4>
+            <div class="info-row"><span class="info-label">🏠 Accommodation:</span><br>
+            Budget stays and dormitories typically start from ₹500. Standard hotel rooms range from ₹1,500 to ₹2,500 per night. Luxury resorts or government cottages may cost ₹4,000+.</div>
+            
+            <div class="info-row"><span class="info-label">🚗 Transportation:</span><br>
+            Public transport and shared autos are available for under ₹300. Private taxi rentals generally cost between ₹2,000 and ₹3,500 per day depending on the vehicle type.</div>
+            
+            <div class="info-row"><span class="info-label">🍴 Food & Dining:</span><br>
+            A decent meal or local Thali costs approximately ₹150 - ₹300. Daily food expenditure for a tourist is estimated at ₹500 - ₹800.</div>
+            
+            <div class="info-row"><span class="info-label">📌 Important Note:</span><br>
+            These are estimated costs for one person per day. Prices may vary based on the season and specific location availability in {p['District']}.</div>
+            
+            <div style="text-align: center; margin-top: 30px; font-style: italic; color: #FCD34D !important;">
+                Jai Johar! Have a safe and memorable trip to Chhattisgarh.
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
     st.write("<br>", unsafe_allow_html=True)
-    if st.button("🏠 Plan Another Trip"):
+    if st.button("🏠 Plan Another Journey"):
         st.session_state.selection = None
         go_to(0)
         st.rerun()
