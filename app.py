@@ -1,172 +1,141 @@
 import streamlit as st
 import pandas as pd
-import pickle
 
-# --- 1. CONFIG & THEME ---
-st.set_page_config(page_title="Chhattisgarh Tourism AI", layout="wide")
+# --- 1. SETTINGS & STYLING ---
+st.set_page_config(page_title="CG Tourism AI", layout="centered")
 
 st.markdown("""
     <style>
-    .main { background-color: #f9fbf9; }
-    .stButton>button { border-radius: 20px; height: 3em; font-weight: bold; width: 100%; }
-    .next-btn>button { background-color: #e65100; color: white; }
-    .back-btn>button { background-color: #757575; color: white; }
-    h1 { color: #1b5e20; text-align: center; }
-    .place-card { 
-        border: 2px solid #e0e0e0; 
-        padding: 20px; 
-        border-radius: 15px; 
-        background-color: white; 
-        margin-bottom: 20px; 
-        box-shadow: 2px 4px 8px rgba(0,0,0,0.1);
-    }
-    .selected-card {
-        border: 2px solid #2e7d32;
-        background-color: #f1f8e9;
-    }
+    .stApp { background-color: #F4F7F6; }
+    .main-title { color: #1E3A8A; text-align: center; font-weight: 800; font-size: 2.5rem; margin-bottom: 0px; }
+    .sub-title { color: #64748B; text-align: center; margin-bottom: 30px; }
+    .stButton>button { width: 100%; border-radius: 8px; height: 3.5rem; background-color: #1E3A8A; color: white; border: none; transition: 0.3s; }
+    .stButton>button:hover { background-color: #3B82F6; color: white; }
+    .card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .price-tag { background: #DCFCE7; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 0.8rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA LOAD & CLEANING ---
+# --- 2. DATA PROCESSING ---
 @st.cache_resource
-def load_assets():
-    df = pd.read_csv("CG_Tourism_Full_Updated.csv").fillna('Not available')
+def get_clean_data():
+    df = pd.read_csv("CG_Tourism_Full_Updated.csv").fillna('Information not available')
     
-    category_map = {
-        'Temple': 'Religious & Spiritual', 'Religious': 'Religious & Spiritual', 'Spiritual / Pilgrimage': 'Religious & Spiritual',
-        'Waterfall': 'Nature & Waterfalls', 'Nature': 'Nature & Waterfalls', 'Water Tourism': 'Nature & Waterfalls', 
-        'Hot Spring': 'Nature & Waterfalls', 'Lake / River': 'Nature & Waterfalls', 'Lake / Dam': 'Nature & Waterfalls',
-        'Heritage / Fort': 'Heritage & Culture', 'Heritage / Archaeological': 'Heritage & Culture', 
-        'Heritage / Urban': 'Heritage & Culture', 'Tribal / Cultural': 'Heritage & Culture', 'Museum / Park': 'Heritage & Culture',
-        'Wildlife': 'Wildlife & Parks', 'Park / Zoo': 'Wildlife & Parks', 'Cave': 'Wildlife & Parks',
-        'Hill Station': 'Hill Stations',
-        'Urban Attraction': 'Leisure & Lifestyle', 'Shopping / Food Market': 'Leisure & Lifestyle', 
-        'Leisure/Nature': 'Leisure & Lifestyle', 'Adventure': 'Leisure & Lifestyle'
-    }
-    df['Simplified_Category'] = df['Category'].map(category_map)
+    def apply_categories(row):
+        name = row['Place Name'].lower()
+        orig_cat = row['Category']
+        # Specific Correction: Lakes & Waterfronts
+        if any(x in name for x in ['sarovar', 'talab', 'lake', 'marine drive', 'riverfront']): return 'Lakes & Waterfronts'
+        if 'tattapani' in name: return 'Nature & Hot Springs'
+        # Grouping
+        if orig_cat in ['Temple', 'Religious', 'Spiritual / Pilgrimage']: return 'Religious & Spiritual'
+        if orig_cat in ['Waterfall', 'Nature', 'Water Tourism']: return 'Nature & Waterfalls'
+        if orig_cat in ['Wildlife', 'Park / Zoo', 'Cave']: return 'Wildlife & Parks'
+        if orig_cat in ['Heritage / Fort', 'Heritage / Archaeological', 'Heritage / Urban', 'Museum / Park']: return 'Heritage & Culture'
+        if orig_cat in ['Hill Station']: return 'Hill Stations'
+        return 'Urban Leisure & Adventure'
+
+    df['Final_Category'] = df.apply(apply_categories, axis=1)
     return df
 
-df = load_assets()
+df = get_clean_data()
 
-# --- 3. NAVIGATION STATE ---
-if 'step' not in st.session_state:
-    st.session_state.step = 0
-if 'selected_place' not in st.session_state:
-    st.session_state.selected_place = None
+# --- 3. SESSION STATE FOR NAVIGATION ---
+if 'page' not in st.session_state: st.session_state.page = 0
+if 'selection' not in st.session_state: st.session_state.selection = None
 
-def next_step(): st.session_state.step += 1
-def prev_step(): st.session_state.step -= 1
+def change_page(idx): st.session_state.page = idx
 
 # --- PAGE 0: WELCOME ---
-if st.session_state.step == 0:
-    st.markdown("<h1>🙏 JAI JOHAR!</h1>", unsafe_allow_html=True)
-    st.image("https://images.unsplash.com/photo-1623053831034-793507bc6994?auto=format&fit=crop&q=80&w=1200", use_container_width=True)
-    st.markdown("<h3 style='text-align: center;'>CG Tourism Smart AI Planner</h3>", unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns([4, 2, 4])
-    with c2: st.button("Start Planning ➡️", on_click=next_step)
+if st.session_state.page == 0:
+    st.markdown("<p class='main-title'>JAI JOHAR</p>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-title'>Chhattisgarh Tourism Intelligence System</p>", unsafe_allow_html=True)
+    st.image("https://images.unsplash.com/photo-1623053831034-793507bc6994?w=800&q=80", use_container_width=True)
+    st.write("---")
+    if st.button("Start Trip Planner ➔"): change_page(1)
 
-# --- PAGE 1: USER INPUT ---
-elif st.session_state.step == 1:
-    st.header("🎯 Step 1: Search Preferences")
-    col1, col2 = st.columns(2)
-    with col1:
-        category = st.selectbox("I am interested in:", sorted(df['Simplified_Category'].unique()))
-        district = st.selectbox("Select District:", ["Any"] + sorted(df['District'].unique().tolist()))
-    with col2:
-        budget = st.select_slider("Budget Range", options=["Low (0-1000)", "Mid (1000-3000)", "High (3000+)"])
-        vibe = st.text_input("Vibe (e.g. peaceful, adventure)")
+# --- PAGE 1: PREFERENCES ---
+elif st.session_state.page == 1:
+    st.markdown("### 🎯 Trip Preferences")
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            cat = st.selectbox("Interest Area", sorted(df['Final_Category'].unique()))
+            dist = st.selectbox("Location", ["Chhattisgarh (All)"] + sorted(df['District'].unique().tolist()))
+        with col2:
+            budget_lvl = st.select_slider("Budget Level", options=["Low", "Medium", "High"])
+            vibe = st.text_input("Vibe (Optional)", placeholder="e.g. Ancient, Calm")
     
-    st.session_state.user_prefs = {"category": category, "district": district, "vibe": vibe, "budget": budget}
+    st.session_state.filters = {"cat": cat, "dist": dist, "budget": budget_lvl}
     
     st.write("---")
-    b1, b2, b3 = st.columns([2, 6, 2])
-    with b1: st.button("⬅️ Back", on_click=prev_step)
-    with b3: st.button("Next ➡️", on_click=next_step)
+    c1, c2 = st.columns(2)
+    with c1: st.button("⬅ Back", on_click=lambda: change_page(0))
+    with c2: st.button("Find Places ➔", on_click=lambda: change_page(2))
 
-# --- PAGE 2: VIEW PHOTOS & SELECT ---
-elif st.session_state.step == 2:
-    st.header("🖼️ Step 2: Select a Destination")
-    u = st.session_state.get('user_prefs', {})
+# --- PAGE 2: SELECTION ---
+elif st.session_state.page == 2:
+    f = st.session_state.filters
+    st.markdown(f"### 📍 Recommendations for {f['cat']}")
     
-    # Filter Data
-    f_df = df.copy()
-    if u.get('district') != "Any":
-        f_df = f_df[f_df['District'] == u['district']]
-    f_df = f_df[f_df['Simplified_Category'] == u.get('category')]
+    # Logic: Inclusive Filtering
+    filtered = df[df['Final_Category'] == f['cat']]
+    if f['dist'] != "Chhattisgarh (All)":
+        filtered = filtered[filtered['District'] == f['dist']]
+    
+    # Budget Logic: High includes Low and Med
+    if f['budget'] == "Low":
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1000]
+    elif f['budget'] == "Medium":
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 3000]
+    # High shows everything (no upper limit filter)
 
-    # Budget logic (Low shows Low, Mid shows Mid + Low)
-    if u.get('budget') == "Low (0-1000)":
-        f_df = f_df[f_df['Estimated Total Trip Budget (INR) 1 Night'] <= 1000]
-    elif u.get('budget') == "Mid (1000-3000)":
-        f_df = f_df[f_df['Estimated Total Trip Budget (INR) 1 Night'] <= 3000]
-
-    if f_df.empty:
-        st.error("No places match your search. Try changing the District or Budget!")
-        st.button("⬅️ Change Preferences", on_click=prev_step)
+    if filtered.empty:
+        st.warning("No specific matches found. Try widening your search.")
+        st.button("⬅ Back to Preferences", on_click=lambda: change_page(1))
     else:
-        st.write(f"Showing {len(f_df)} results in {u['district']}:")
-        for i, row in f_df.iterrows():
-            # Check if this place is already selected
-            is_selected = st.session_state.selected_place is not None and st.session_state.selected_place['Place Name'] == row['Place Name']
-            card_class = "place-card selected-card" if is_selected else "place-card"
-            
-            st.markdown(f"<div class='{card_class}'>", unsafe_allow_html=True)
-            c1, c2 = st.columns([1, 2])
-            with c1:
-                st.write(f"### [📷 View Photos](https://www.google.com/search?q=Chhattisgarh+{row['Place Name'].replace(' ', '+')}&tbm=isch)")
-                st.write(f"💰 Budget: ₹{row['Estimated Total Trip Budget (INR) 1 Night']}")
-            with c2:
-                st.subheader(row['Place Name'])
-                st.write(f"📍 District: {row['District']}")
-                if st.button(f"✅ Click to Select {row['Place Name']}", key=f"btn_{i}"):
-                    st.session_state.selected_place = row
-                    st.rerun() # Refresh to show selection
-            st.markdown("</div>", unsafe_allow_html=True)
+        for idx, row in filtered.iterrows():
+            with st.container():
+                st.markdown(f"""
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.2rem; font-weight: 700; color: #1E293B;">{row['Place Name']}</span>
+                        <span class="price-tag">₹{row['Estimated Total Trip Budget (INR) 1 Night']}</span>
+                    </div>
+                    <p style="color: #64748B; margin: 5px 0;">District: {row['District']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(f"Select {row['Place Name']}", key=idx):
+                    st.session_state.selection = row
+                    change_page(3)
+                    st.rerun()
+        
+        st.button("⬅ Change Preferences", on_click=lambda: change_page(1))
 
-        st.write("---")
-        b1, b2, b3 = st.columns([2, 6, 2])
-        with b1: st.button("⬅️ Back", on_click=prev_step)
-        if st.session_state.selected_place is not None:
-            with b3: st.button("Next ➡️", on_click=next_step)
-        else:
-            with b3: st.info("Select a place to continue")
-
-# --- PAGE 3: COST ESTIMATION ---
-elif st.session_state.step == 3:
-    st.header("💰 Step 3: Trip Cost")
-    p = st.session_state.selected_place
+# --- PAGE 3: SUMMARY ---
+elif st.session_state.page == 3:
+    p = st.session_state.selection
+    st.markdown(f"### 🏁 Travel Summary: {p['Place Name']}")
     
-    st.success(f"Estimated Budget for {p['Place Name']}")
-    cost_data = {
-        "Item": ["Stay (1 Night)", "Food (1 Day)", "Entry Fees", "Total"],
-        "Cost": [f"₹{p['Avg Stay Cost per night (INR)']}", f"₹{p['Avg Food Cost per day (INR)']}", f"₹{p['Entry Fee (INR)']}", f"₹{p['Estimated Total Trip Budget (INR) 1 Night']}"]
-    }
-    st.table(pd.DataFrame(cost_data))
+    col1, col2 = st.columns([1.5, 1])
+    with col1:
+        st.info(f"**Experience:** {p['Notes']}")
+        st.success(f"**Must Do:** {p['Things to Do']}")
+    with col2:
+        st.markdown("**💰 Cost Estimation**")
+        st.write(f"Stay: ₹{p['Avg Stay Cost per night (INR)']}")
+        st.write(f"Food: ₹{p['Avg Food Cost per day (INR)']}")
+        st.write(f"**Total: ₹{p['Estimated Total Trip Budget (INR) 1 Night']}**")
     
     st.write("---")
-    b1, b2, b3 = st.columns([2, 6, 2])
-    with b1: st.button("⬅️ Back", on_click=prev_step)
-    with b3: st.button("Next ➡️", on_click=next_step)
-
-# --- PAGE 4: FINAL TRAVEL PLAN ---
-elif st.session_state.step == 4:
-    p = st.session_state.selected_place
-    st.header(f"🧳 Final Travel Guide: {p['Place Name']}")
+    st.markdown(f"🚂 **Transport:** Nearest Station is {p['Nearest Railway Station']}.")
+    st.markdown(f"🍲 **Food:** Try the local {p['Local Specialty Food']}.")
     
-    colA, colB = st.columns([2, 1])
-    with colA:
-        st.markdown("### 📝 Highlights")
-        st.write(p['Notes'])
-        st.markdown("### 🚣 Activities")
-        st.write(p['Things to Do'])
-    with colB:
-        st.info(f"**District:** {p['District']}")
-        st.success(f"**Local Food:** {p['Local Specialty Food']}")
-        st.warning(f"**Transport:** Nearest Station - {p['Nearest Railway Station']}")
-
     st.write("---")
-    if st.button("🏠 Plan Another Trip"):
-        st.session_state.step = 0
-        st.session_state.selected_place = None
-        st.rerun()
+    c1, c2 = st.columns(2)
+    with c1: st.button("⬅ Back to List", on_click=lambda: change_page(2))
+    with c2: 
+        if st.button("🏠 Start New Plan"):
+            st.session_state.selection = None
+            change_page(0)
+            st.rerun()
