@@ -131,12 +131,10 @@ elif st.session_state.page == 1:
     st.markdown("### 🎯 Find Your Perfect Spot")
     col1, col2 = st.columns(2)
     with col1:
-        # Added "All Categories" to selection
         cat_options = ["All Categories"] + sorted(df['Final_Category'].unique().tolist())
         cat = st.selectbox("I want to visit:", cat_options)
         dist = st.selectbox("Location:", ["All Chhattisgarh"] + sorted(df['District'].unique().tolist()))
     with col2:
-        # Updated slider with numerical ranges
         budget_lvl = st.select_slider(
             "Budget Level (for 1 Night):", 
             options=["Low (0-1500)", "Medium (1500-3000)", "High (3000+)"]
@@ -152,30 +150,33 @@ elif st.session_state.page == 1:
 # --- PAGE 2: RESULTS ---
 elif st.session_state.page == 2:
     f = st.session_state.filters
-    st.markdown(f"### 📍 Top Destinations")
+    st.markdown(f"### 📍 Recommended Destinations")
     
-    # Category filtering logic
-    if f['cat'] == "All Categories":
-        filtered = df.copy()
-    else:
-        filtered = df[df['Final_Category'] == f['cat']]
+    # Start with full dataframe
+    filtered = df.copy()
+
+    # Category filtering: Skip if "All Categories" is selected
+    if f['cat'] != "All Categories":
+        filtered = filtered[filtered['Final_Category'] == f['cat']]
         
-    # District filtering logic
+    # District filtering: Skip if "All Chhattisgarh" is selected
     if f['dist'] != "All Chhattisgarh":
         filtered = filtered[filtered['District'] == f['dist']]
     
-    # Inclusive Budget Logic
-    # High shows all (<=99999), Medium shows Medium+Low (<=3000), Low shows only Low (<=1500)
+    # Budget Logic:
+    # High (3000+) -> Shows everything (no filter applied)
+    # Medium (1500-3000) -> Shows Medium and Low (Budget <= 3000)
+    # Low (0-1500) -> Shows only Low (Budget <= 1500)
     if "Low" in f['budget']:
         filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1500]
     elif "Medium" in f['budget']:
         filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 3000]
-    # "High" does not filter by upper limit, showing everything.
 
     if filtered.empty:
         st.warning("No matches found for this filter. Try expanding your budget or location.")
         st.button("⬅ Back to Filters", on_click=lambda: go_to(1))
     else:
+        st.info(f"Showing {len(filtered)} destinations based on your filters.")
         for idx, row in filtered.iterrows():
             with st.container():
                 st.markdown(f"""<div class="card">
