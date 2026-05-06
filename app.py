@@ -203,8 +203,8 @@ elif st.session_state.page == 3:
     col_l, col_r = st.columns(2)
     with col_l:
         st.markdown("#### 🚀 How to Reach")
-        st.write(f"**Route:** {p['How to Reach from Raipur']}")
-        st.write(f"**Nearest Train:** {p['Nearest Railway Station']}")
+        st.write(f"**Route (from Raipur):** {p['How to Reach from Raipur']}")
+        st.write(f"**Nearest station:** {p['Nearest Railway Station']}")
 
     with col_r:
         st.markdown("#### 🍱 Food & Activities")
