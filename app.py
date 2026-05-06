@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+# --- ML LIBRARIES ADDED ---
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # --- 1. SETTINGS & ADVANCED STYLING ---
 st.set_page_config(page_title="CG Tourism AI", layout="wide")
@@ -48,7 +51,6 @@ st.markdown("""
     }
     .side-card p { color: #4B5563 !important; font-size: 0.9rem; }
 
-    /* BUTTON TEXT FIX */
     div.stButton > button p { color: white !important; }
     .stButton>button { 
         width: 100%; border-radius: 12px; height: 3.8rem; 
@@ -62,10 +64,20 @@ st.markdown("""
     .card { background: #F9FAFB; padding: 25px; border-radius: 15px; border: 2px solid #E5E7EB; margin-bottom: 20px; }
     .card-title { font-size: 1.4rem; font-weight: 800; color: #064E3B !important; }
     .guide-box { background: #F0FDF4; padding: 20px; border-radius: 12px; border-left: 6px solid #059669; }
+    
+    /* ML Rec Card Styling */
+    .rec-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        text-align: center;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA PROCESSING ---
+# --- 2. DATA PROCESSING & ML ENGINE ---
 @st.cache_resource
 def get_clean_data():
     try:
@@ -96,6 +108,28 @@ def get_clean_data():
     return df
 
 df = get_clean_data()
+
+# --- ML RECOMMENDATION FUNCTION ---
+def get_ml_recommendations(place_name, full_df):
+    # Features ko combine karna ML ke liye
+    full_df['combined_features'] = full_df['Final_Category'] + " " + full_df['District'] + " " + full_df['Notes']
+    
+    # Vectorization
+    tfidf = TfidfVectorizer(stop_words='english')
+    tfidf_matrix = tfidf.fit_transform(full_df['combined_features'])
+    
+    # Cosine Similarity calculate karna
+    cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+    
+    try:
+        idx = full_df.index[full_df['Place Name'] == place_name][0]
+        sim_scores = list(enumerate(cosine_sim[idx]))
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+        # Top 3 similar places (0 index khud wahi place hai, isliye 1:4)
+        sim_indices = [i[0] for i in sim_scores[1:4]]
+        return full_df.iloc[sim_indices]
+    except:
+        return pd.DataFrame()
 
 # --- 3. NAVIGATION ---
 if 'page' not in st.session_state: st.session_state.page = 0
@@ -152,31 +186,22 @@ elif st.session_state.page == 2:
     f = st.session_state.filters
     st.markdown(f"### 📍 Recommended Destinations")
     
-    # Start with full dataframe
     filtered = df.copy()
-
-    # Category filtering: Skip if "All Categories" is selected
     if f['cat'] != "All Categories":
         filtered = filtered[filtered['Final_Category'] == f['cat']]
-        
-    # District filtering: Skip if "All Chhattisgarh" is selected
     if f['dist'] != "All Chhattisgarh":
         filtered = filtered[filtered['District'] == f['dist']]
     
-    # Budget Logic:
-    # High (3000+) -> Shows everything (no filter applied)
-    # Medium (1500-3000) -> Shows Medium and Low (Budget <= 3000)
-    # Low (0-1500) -> Shows only Low (Budget <= 1500)
     if "Low" in f['budget']:
         filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1500]
     elif "Medium" in f['budget']:
         filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 3000]
 
     if filtered.empty:
-        st.warning("No matches found for this filter. Try expanding your budget or location.")
+        st.warning("No matches found. Try expanding your budget or location.")
         st.button("⬅ Back to Filters", on_click=lambda: go_to(1))
     else:
-        st.info(f"Showing {len(filtered)} destinations based on your filters.")
+        st.info(f"Showing {len(filtered)} destinations.")
         for idx, row in filtered.iterrows():
             with st.container():
                 st.markdown(f"""<div class="card">
@@ -194,7 +219,7 @@ elif st.session_state.page == 2:
                         go_to(3)
                         st.rerun()
 
-# --- PAGE 3: DETAILED GUIDE ---
+# --- PAGE 3: DETAILED GUIDE + ML SECTION ---
 elif st.session_state.page == 3:
     p = st.session_state.selection
     st.markdown(f"### 🗺️ Travel Guide: {p['Place Name']}")
@@ -211,6 +236,24 @@ elif st.session_state.page == 3:
         st.write(f"**Food Speciality:** {p['Local Specialty Food']}")
         st.write(f"**Things to Do:** {p['Things to Do']}")
 
+    # --- NEW ML RECOMMENDATION SECTION ---
+    st.markdown("---")
+    st.markdown("#### 🤖 AI Recommendations (People also visited)")
+    ml_recs = get_ml_recommendations(p['Place Name'], df)
+    
+    if not ml_recs.empty:
+        cols = st.columns(3)
+        for i, (m_idx, m_row) in enumerate(ml_recs.iterrows()):
+            with cols[i]:
+                st.markdown(f"""<div class="rec-card">
+                    <b>{m_row['Place Name']}</b><br>
+                    <small>{m_row['District']}</small>
+                </div>""", unsafe_allow_html=True)
+                if st.button("Explore", key=f"ml_{m_idx}"):
+                    st.session_state.selection = m_row
+                    st.rerun()
+    # ---------------------------------------
+
     st.write("---")
     c1, c2 = st.columns(2)
     with c1: st.button("⬅ Back to Results", on_click=lambda: go_to(2))
@@ -219,37 +262,16 @@ elif st.session_state.page == 3:
 # --- PAGE 4: BUDGET INFORMATION ---
 elif st.session_state.page == 4:
     st.markdown("### 📊 Average Cost Information")
-    st.write("Planning your trip? Here is a simple breakdown of average costs per person in Chhattisgarh:")
-    
     st.markdown("""
     <div class="card">
         <h4 style='color:#064E3B'>🏠 Stay (Accommodation)</h4>
         <ul>
             <li><b>Budget Guesthouses:</b> ₹500 - ₹800 per night</li>
             <li><b>Standard Hotels / CTB Resorts:</b> ₹1,200 - ₹2,500 per night</li>
-            <li><b>Luxury Resorts:</b> ₹4,000+ per night</li>
         </ul>
-    </div>
-    <div class="card">
-        <h4 style='color:#064E3B'>🍱 Food & Meals</h4>
-        <ul>
-            <li><b>Local Eateries / Dhaba:</b> ₹150 - ₹300 per day</li>
-            <li><b>Cafes & Restaurants:</b> ₹500 - ₹1,000 per day</li>
-        </ul>
-    </div>
-    <div class="card">
-        <h4 style='color:#064E3B'>🚗 Travel & Transport</h4>
-        <ul>
-            <li><b>Public Bus / Train:</b> ₹100 - ₹300 for nearby spots</li>
-            <li><b>Private Taxi:</b> ₹12 - ₹15 per km (Standard rate)</li>
-        </ul>
-    </div>
-    <div class="guide-box">
-        <b>💡 Tip:</b> Prices are estimates for 1 person. Booking in advance for CTB (Chhattisgarh Tourism Board) resorts is highly recommended for waterfalls and wildlife parks.
     </div>
     """, unsafe_allow_html=True)
     
-    st.write("---")
     if st.button("🏠 Start New Search"):
         st.session_state.selection = None
         go_to(0)
