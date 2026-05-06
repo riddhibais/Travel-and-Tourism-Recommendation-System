@@ -51,14 +51,78 @@ if st.session_state.page == 0:
     st.title("🌾 CG Tourism ML System")
     if st.button("Start"): go_to(1)
 
-# --- PAGE 2 INPUT ---
-elif st.session_state.page == 1:
-    cat = st.selectbox("Category", ["All"] + df['Final_Category'].unique().tolist())
-    dist = st.selectbox("District", ["All"] + df['District'].unique().tolist())
+# --- PAGE 2: RESULTS ---
+elif st.session_state.page == 2:
+    import pickle
+    from sklearn.metrics.pairwise import cosine_similarity
 
-    st.session_state.filters = {"cat": cat, "dist": dist}
+    f = st.session_state.filters
+    st.markdown(f"### 📍 Recommended Destinations")
+    
+    # 🔹 Load ML (safe load inside page)
+    with open("vectorizer.pkl", "rb") as f1:
+        tfidf = pickle.load(f1)
+    with open("tfidf_matrix.pkl", "rb") as f2:
+        tfidf_matrix = pickle.load(f2)
 
-    if st.button("Search"): go_to(2)
+    # 🔹 STEP 1: SAME FILTER (no change)
+    filtered = df.copy()
+
+    if f['cat'] != "All Categories":
+        filtered = filtered[filtered['Final_Category'] == f['cat']]
+        
+    if f['dist'] != "All Chhattisgarh":
+        filtered = filtered[filtered['District'] == f['dist']]
+    
+    if "Low" in f['budget']:
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 1500]
+    elif "Medium" in f['budget']:
+        filtered = filtered[filtered['Estimated Total Trip Budget (INR) 1 Night'] <= 3000]
+
+    # 🔴 अगर filter से कुछ नहीं मिला
+    if filtered.empty:
+        st.warning("No matches found for this filter. Try expanding your budget or location.")
+        st.button("⬅ Back to Filters", on_click=lambda: go_to(1))
+
+    else:
+        # 🔹 STEP 2: ML SORTING (not replacing, just improving order)
+        
+        # features ensure
+        filtered['features'] = filtered['Category'] + " " + filtered['District'] + " " + filtered['Sub-Category'] + " " + filtered['Things to Do']
+        
+        user_text = f['cat'] + " " + f['dist'] + " travel tourism"
+        user_vec = tfidf.transform([user_text])
+
+        filtered_vec = tfidf.transform(filtered['features'])
+
+        similarity = cosine_similarity(user_vec, filtered_vec)
+
+        # sort by similarity
+        filtered['score'] = similarity[0]
+        filtered = filtered.sort_values(by='score', ascending=False)
+
+        # 🔹 LIMIT RESULTS
+        filtered = filtered.head(10)
+
+        st.info(f"Showing {len(filtered)} smart recommendations (ML Ranked)")
+
+        # 🔹 SAME UI DISPLAY (NO CHANGE)
+        for idx, row in filtered.iterrows():
+            with st.container():
+                st.markdown(f"""<div class="card">
+                    <span class="card-title">{row['Place Name']}</span><br>
+                    <span style="color: #374151;">District: {row['District']} | Category: {row['Final_Category']}</span>
+                </div>""", unsafe_allow_html=True)
+                
+                cA, cB = st.columns(2)
+                with cA:
+                    link = f"https://www.google.com/search?q={row['Place Name'].replace(' ', '+')}+Chhattisgarh&tbm=isch"
+                    st.markdown(f"**[📷 View Photos]({link})**")
+                with cB:
+                    if st.button(f"View Travel Guide", key=idx):
+                        st.session_state.selection = row
+                        go_to(3)
+                        st.rerun()
 
 # --- PAGE 3 RESULT (ML HERE) ---
 elif st.session_state.page == 2:
